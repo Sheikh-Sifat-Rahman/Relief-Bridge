@@ -1,3 +1,6 @@
+# Relief_Bridge
+A Django-based disaster relief platform for managing donations, volunteers, aid requests, inventory, and transparent resource distribution.
+
 # Community Donation Management System
 
 A Django prototype for disaster relief in Bangladesh. One account supports donor, volunteer and aid seeker roles simultaneously. Bootstrap templates provide public campaigns, private role dashboards and aggregate transparency charts. Admin email/password sign-in and a review centre live at `/management/`. Advanced Django admin operations live at `/management/operations/`.
