@@ -1,0 +1,1 @@
+{% extends 'admin/change_form.html' %}{% block object-tools-items %}{{ block.super }}{% if original %}<li><a href="{% url 'admin:inventory_movement' original.pk %}">Record stock movement</a></li>{% endif %}{% endblock %}

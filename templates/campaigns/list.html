@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<p class="eyebrow">Give with purpose</p><h1>Active relief campaigns</h1><p class="muted mb-5">Support communities facing emergencies across Bangladesh.</p><div class="row g-4">{% for campaign in campaigns %}{% include "campaigns/card.html" %}{% empty %}<p>No active campaigns yet.</p>{% endfor %}</div>{% endblock %}

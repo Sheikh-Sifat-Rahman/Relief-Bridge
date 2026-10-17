@@ -1,0 +1,15 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+*.sqlite3
+staticfiles/
+media/
+
+.DS_Store
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+/*-preview.png
+/operations-redesign.png
