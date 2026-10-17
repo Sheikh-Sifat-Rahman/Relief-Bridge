@@ -27,3 +27,13 @@ input,textarea,select{border:1px solid #cbd8ca;border-radius:7px;background:#fff
 #nav-sidebar{background:#fff;border-right:1px solid #dce4d9;padding:12px 0}#nav-sidebar .module{border-radius:0}#nav-sidebar table th,#nav-sidebar table td{padding:9px 12px}#nav-sidebar .current-model{background:#e7f0e6}#nav-filter{margin:0 10px 12px;width:calc(100% - 20px);box-sizing:border-box}#toggle-nav-sidebar{background:#edf2e9;color:#16765b;border-color:#dce4d9}#nav-sidebar .module caption{padding:12px}body.popup #content{padding:20px}
 @media(max-width:1100px){#content-main.operations-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#header{padding:18px 24px}#user-tools{gap:12px}.operations-user{display:none}#content{padding:28px 24px}}
 @media(max-width:767px){#header{align-items:flex-start;gap:14px;padding:18px 20px}#header .operations-brand{font-size:20px}#user-tools{display:flex;flex-wrap:wrap;gap:10px;width:100%;justify-content:flex-start}#content{padding:24px 18px}#content-main.operations-grid{grid-template-columns:1fr}.operations-intro h1{font-size:30px}div.breadcrumbs{padding:12px 18px}.operations-footer{padding:20px;flex-direction:column}.form-row{padding:14px}.messagelist li{margin:12px 18px}.object-tools{float:none;margin:0 0 20px;padding:0}.object-tools li{margin:0 8px 6px 0}.submit-row{padding:14px}#changelist .actions{padding:12px}.aligned label{width:auto}#header .admin-dashboard-links{left:0;right:auto}}
+/* Keep navigation and batch tables usable on tablet-sized screens. */
+@media(max-width:1024px){
+ #header{height:auto;align-items:flex-start;flex-shrink:0}
+ #user-tools{position:static;flex-wrap:wrap;width:auto;max-width:100%}
+ #nav-sidebar,#toggle-nav-sidebar{display:none}
+ .main.shifted > #nav-sidebar + .content{max-width:100%}
+ #changelist{flex-direction:column}
+ #changelist .changelist-form-container{width:100%;min-width:0}
+ #changelist-filter{width:auto;flex:0 0 auto;border-left:0;border-top:1px solid #dce4d9}
+}

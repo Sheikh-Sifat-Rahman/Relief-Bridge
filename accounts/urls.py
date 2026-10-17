@@ -6,6 +6,7 @@ from .forms import PublicLoginForm
 
 app_name = "accounts"
 urlpatterns = [
+    path("notifications/", views.notifications, name="notifications"),
     path("household/", views.household, name="household"),
     path("register/", views.register, name="register"),
     path(

@@ -85,6 +85,7 @@ class DonationItem(models.Model):
         default="PENDING",
         choices=[(x, x) for x in ["PENDING", "ACCEPTED", "PARTIAL", "REJECTED"]],
     )
+    inspected_at = models.DateTimeField(null=True, blank=True, editable=False)
     accepted_quantity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     rejected_quantity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     rejection_reason = models.TextField(blank=True)

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<p class="eyebrow">Your updates</p><h1>Notifications</h1>
+<form method="post" class="mb-4">{% csrf_token %}<button class="btn btn-outline-success">Mark all as read</button></form>
+{% for entry in page %}<article class="card card-body mb-3">
+<div class="d-flex justify-content-between gap-3"><p>{% if not entry.read_at %}<span class="badge bg-success">New</span> {% endif %}{{ entry.message }}</p><small>{{ entry.created_at }}</small></div>
+<div class="d-flex gap-3 align-items-center">{% if entry.link %}<a href="{{ entry.link }}">View details</a>{% endif %}
+{% if not entry.read_at %}<form method="post">{% csrf_token %}<input type="hidden" name="notification_id" value="{{ entry.pk }}"><button class="btn btn-sm btn-outline-secondary">Mark as read</button></form>{% endif %}</div></article>
+{% empty %}<p>No updates yet. Approval, inspection and delivery updates will appear here.</p>{% endfor %}
+<nav aria-label="Notifications pages">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Previous</a>{% endif %} Page {{ page.number }} of {{ page.paginator.num_pages }} {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next</a>{% endif %}</nav>
+{% endblock %}

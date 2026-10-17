@@ -55,6 +55,28 @@ class InventoryItem(models.Model):
             ),
         ]
 
+    @property
+    def reserved_quantity(self):
+        return (
+            self.batches.aggregate(total=models.Sum("reserved_quantity"))["total"] or 0
+        )
+
+    @property
+    def available_quantity(self):
+        from django.utils import timezone
+
+        return (
+            self.batches.filter(
+                models.Q(expiration_date__isnull=True)
+                | models.Q(expiration_date__gte=timezone.localdate())
+            ).aggregate(
+                total=models.Sum(
+                    models.F("remaining_quantity") - models.F("reserved_quantity")
+                )
+            )["total"]
+            or 0
+        )
+
     def __str__(self):
         return f"{self.item_name} ({self.warehouse})"
 
@@ -85,3 +107,45 @@ class InventoryTransaction(models.Model):
                 name="valid_movement_sign",
             )
         ]
+
+
+class InventoryBatch(models.Model):
+    inventory_item = models.ForeignKey(
+        InventoryItem, on_delete=models.PROTECT, related_name="batches"
+    )
+    donation_item = models.OneToOneField(
+        "donations.DonationItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="batch",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=[
+            ("DONATION", "Donation"),
+            ("OPENING", "Opening balance"),
+            ("MANUAL", "Manual receipt"),
+        ],
+    )
+    received_quantity = models.DecimalField(max_digits=14, decimal_places=2)
+    remaining_quantity = models.DecimalField(max_digits=14, decimal_places=2)
+    reserved_quantity = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    expiration_date = models.DateField(null=True, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "inventory batches"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    reserved_quantity__gte=0,
+                    received_quantity__gte=models.F("remaining_quantity"),
+                    remaining_quantity__gte=models.F("reserved_quantity"),
+                ),
+                name="valid_batch_balance",
+            )
+        ]
+
+    def __str__(self):
+        return f"Batch {self.pk} · {self.inventory_item}"

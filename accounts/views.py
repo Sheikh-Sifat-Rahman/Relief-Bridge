@@ -83,3 +83,33 @@ def household(request):
         "form.html",
         {"form": form, "title": "Edit household profile", "profile_editor": True},
     )
+
+
+@login_required
+def notifications(request):
+    from django.utils import timezone
+
+    from .models import Notification
+
+    entries = Notification.objects.filter(recipient=request.user)
+    if request.method == "POST":
+        if request.POST.get("notification_id"):
+            from django.http import HttpResponseBadRequest
+
+            try:
+                notification_id = int(request.POST["notification_id"])
+            except (ValueError, TypeError):
+                return HttpResponseBadRequest("Invalid notification.")
+            entries.filter(pk=notification_id, read_at__isnull=True).update(
+                read_at=timezone.now()
+            )
+        else:
+            entries.filter(read_at__isnull=True).update(read_at=timezone.now())
+        return redirect("accounts:notifications")
+    from django.core.paginator import Paginator
+
+    return render(
+        request,
+        "accounts/notifications.html",
+        {"page": Paginator(entries, 25).get_page(request.GET.get("page"))},
+    )

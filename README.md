@@ -225,3 +225,19 @@ Unused records can be deleted through Operations. Records referenced by donation
 ## Operations appearance
 
 Operations uses a shared green-and-white theme matching the public website. The module index uses permission-aware cards; record tables, filters, navigation, form fields and action buttons share the same palette. Styling lives in `static/css/operations.css`, with template overrides under `templates/admin/`. Django admin continues to handle authorization, forms, validation, add/change/delete operations and bulk actions. The Operations theme uses a consistent light palette.
+
+### Batch tracking, scheduling and notifications
+
+New goods inspections create one inventory batch per accepted donation item, preserving its donor source, warehouse, quantity, receipt date and expiry date. Operations → Inventory batches shows received, remaining and reserved quantities. Inventory items separately show physical stock, reservations and usable stock available for scheduling.
+
+To schedule a delivery, create the distribution and its item lines in Operations, save it, then choose **Schedule / reserve stock**. The confirmation POST reserves available batches in earliest-expiry order, followed by undated stock. Goods that expire before the planned event date are excluded. Reserved deliveries are locked against item and recipient edits; cancel and create a replacement to change them. **Cancel / release stock** releases all reservations without deducting physical stock. Cancelling an event also cancels its outstanding deliveries and releases their stock.
+
+**Confirm delivery** consumes the reserved batches and writes the stock ledger atomically. An immediate delivery without an earlier reservation reserves and consumes stock in the same transaction. The service rechecks expiry, approval, warehouse, units, volunteer assignment and duplicate-aid rules. A repeated confirmation cannot deduct stock twice. Manual stock reductions cannot consume reserved quantities.
+
+Donors see a dated journey on donation details: submission, review, inspection, receipt, reservations, deliveries and released reservations. Per-item totals support partial delivery. Recipient identities are not included in donor timelines. Admins can inspect Distribution allocations to follow the batch-to-delivery relationship.
+
+The Notifications link provides private, paginated in-app updates for access decisions, donation/relief decisions, inspection, scheduling, cancellations and delivery completion, with unread counts and read controls. Notifications are created after a successful database commit. No email or SMS service is configured.
+
+The opening-balance migration preserves existing stock totals as explicitly labelled **Opening balance** batches with no donor linkage. Historic donations and deliveries are retained, but their provenance is not reconstructed. The existing research `traceability_percent` remains a ledger-reconciliation metric, not a donor-provenance percentage.
+
+Stock mutations use atomic transactions and ordered inventory row locks. SQLite remains suitable for local demonstrations; its lack of row-level `SELECT FOR UPDATE` means concurrent production scheduling must be validated against the configured MySQL database. The new tests cover source preservation, expiry selection/revalidation, overbooking, cancellation, partial delivery, failed-operation rollback, replay protection, private timelines/notifications, post-commit notifications and opening-balance migration.

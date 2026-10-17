@@ -2,7 +2,10 @@ from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.urls import reverse
+from django.utils import timezone
 
+from accounts.notifications import notify
 from accounts.permissions import has_role, require_staff
 from audit.services import generate_code, log
 from campaigns.models import DisasterCampaign
@@ -51,10 +54,22 @@ def inspect_goods(actor, item_id, warehouse, accepted, reason=""):
             "An admin must approve the donation before inspection or stock receipt."
         )
     accepted = Decimal(str(accepted))
-    if item.inspection_status != "PENDING" or accepted < 0 or accepted > item.quantity:
+    if (
+        not accepted.is_finite()
+        or item.inspection_status != "PENDING"
+        or accepted < 0
+        or accepted > item.quantity
+    ):
         raise ValidationError("Invalid or repeated inspection.")
+    if (
+        accepted
+        and item.expiration_date
+        and item.expiration_date < timezone.localdate()
+    ):
+        raise ValidationError("Expired goods cannot be received into usable stock.")
     if accepted < item.quantity and not reason.strip():
         raise ValidationError("Give a rejection reason.")
+    item.inspected_at = timezone.now()
     item.accepted_quantity = accepted
     item.rejected_quantity = item.quantity - accepted
     item.rejection_reason = reason
@@ -80,6 +95,7 @@ def inspect_goods(actor, item_id, warehouse, accepted, reason=""):
             actor,
             "DONATION",
             item.donation.donation_code,
+            donation_item=item,
         )
     donation = Donation.objects.select_for_update().get(pk=item.donation_id)
     items = donation.items.all()
@@ -93,3 +109,8 @@ def inspect_goods(actor, item_id, warehouse, accepted, reason=""):
         )
         donation.save()
     log(actor, "Donation inspection", item, reason)
+    notify(
+        donation.donor.user_id,
+        f"{donation.donation_code}: inspection completed for {item.item_name}; {accepted} {item.unit} accepted.",
+        reverse("donor:detail", args=[donation.pk]),
+    )

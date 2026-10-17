@@ -53,7 +53,84 @@ def detail(request, pk):
     donation = get_object_or_404(
         Donation.objects.select_related("campaign"), pk=pk, donor__user=request.user
     )
-    return render(request, "donor/detail.html", {"donation": donation})
+    from distributions.models import DistributionAllocation
+    from inventory.models import InventoryBatch
+
+    batches = list(
+        InventoryBatch.objects.filter(donation_item__donation=donation).select_related(
+            "donation_item", "inventory_item__warehouse"
+        )
+    )
+    timeline = [
+        {
+            "date": donation.created_at,
+            "title": "Pledge submitted",
+            "detail": donation.donation_code,
+        }
+    ]
+    if donation.reviewed_at:
+        timeline.append(
+            {
+                "date": donation.reviewed_at,
+                "title": f"Admin review: {donation.get_review_status_display()}",
+                "detail": donation.review_reason,
+            }
+        )
+    for item in donation.items.all():
+        if item.inspected_at:
+            timeline.append(
+                {
+                    "date": item.inspected_at,
+                    "title": "Inspection completed",
+                    "detail": f"{item.item_name}: {item.accepted_quantity} {item.unit} accepted, {item.rejected_quantity} rejected. {item.rejection_reason}",
+                }
+            )
+    for batch in batches:
+        delivered = (
+            batch.allocations.filter(status="DELIVERED").aggregate(
+                total=Sum("quantity")
+            )["total"]
+            or 0
+        )
+        batch.delivered_quantity = delivered
+        batch.other_out_quantity = (
+            batch.received_quantity - batch.remaining_quantity - delivered
+        )
+        batch.available_quantity = batch.remaining_quantity - batch.reserved_quantity
+        timeline.append(
+            {
+                "date": batch.received_at,
+                "title": "Received into warehouse",
+                "detail": f"{batch.received_quantity} {batch.inventory_item.unit} {batch.inventory_item.item_name} · {batch.inventory_item.warehouse.name}",
+            }
+        )
+    for allocation in DistributionAllocation.objects.filter(
+        batch__in=batches
+    ).select_related("batch__inventory_item"):
+        description = f"{allocation.quantity} {allocation.batch.inventory_item.unit} {allocation.batch.inventory_item.item_name}"
+        timeline.append(
+            {
+                "date": allocation.created_at,
+                "title": "Reserved for delivery",
+                "detail": description,
+            }
+        )
+        if allocation.status != "RESERVED":
+            timeline.append(
+                {
+                    "date": allocation.updated_at,
+                    "title": "Delivered"
+                    if allocation.status == "DELIVERED"
+                    else "Reservation released",
+                    "detail": description,
+                }
+            )
+    timeline.sort(key=lambda entry: entry["date"])
+    return render(
+        request,
+        "donor/detail.html",
+        {"donation": donation, "batches": batches, "timeline": timeline},
+    )
 
 
 @active_role_required("DONOR")

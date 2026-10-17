@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path
 
-from .models import InventoryItem, InventoryTransaction, Warehouse
+from .models import InventoryBatch, InventoryItem, InventoryTransaction, Warehouse
 from .services import move_stock
 
 
@@ -23,9 +23,27 @@ class MovementForm(forms.Form):
 
 @admin.register(InventoryItem)
 class InventoryAdmin(admin.ModelAdmin):
-    list_display = ["item_name", "warehouse", "category", "current_quantity", "unit"]
-    readonly_fields = ["current_quantity", "updated_at"]
+    list_display = [
+        "item_name",
+        "warehouse",
+        "category",
+        "current_quantity",
+        "reserved_quantity",
+        "available_quantity",
+        "unit",
+    ]
+    readonly_fields = [
+        "current_quantity",
+        "reserved_quantity",
+        "available_quantity",
+        "updated_at",
+    ]
     change_form_template = "management/inventory_change.html"
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.batches.exists():
+            return [*self.readonly_fields, "warehouse", "category", "item_name", "unit"]
+        return self.readonly_fields
 
     def get_urls(self):
         return [
@@ -91,3 +109,55 @@ class MovementAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Warehouse)
+
+
+@admin.register(InventoryBatch)
+class BatchAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "inventory_item",
+        "origin",
+        "received",
+        "remaining",
+        "reserved",
+        "expires",
+    ]
+    list_filter = ["source", "inventory_item__warehouse"]
+    search_fields = [
+        "inventory_item__item_name",
+        "donation_item__donation__donation_code",
+    ]
+    list_select_related = ["inventory_item__warehouse", "donation_item__donation"]
+
+    @admin.display(description="Origin")
+    def origin(self, obj):
+        return (
+            obj.donation_item.donation.donation_code
+            if obj.donation_item_id
+            else obj.get_source_display()
+        )
+
+    @admin.display(description="Received")
+    def received(self, obj):
+        return f"{obj.received_quantity} {obj.inventory_item.unit}"
+
+    @admin.display(description="Remaining")
+    def remaining(self, obj):
+        return f"{obj.remaining_quantity} {obj.inventory_item.unit}"
+
+    @admin.display(description="Reserved")
+    def reserved(self, obj):
+        return f"{obj.reserved_quantity} {obj.inventory_item.unit}"
+
+    @admin.display(description="Expires", ordering="expiration_date")
+    def expires(self, obj):
+        return obj.expiration_date
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

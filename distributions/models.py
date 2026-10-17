@@ -72,6 +72,16 @@ class Distribution(models.Model):
             self.distribution_code = generate_code("DIST")
         super().save(*args, **kwargs)
 
+    @property
+    def stock_reservation(self):
+        if self.status == "COMPLETED":
+            return "Delivered"
+        if self.status == "CANCELLED":
+            return "Released"
+        if self.items.filter(allocations__status="RESERVED").exists():
+            return "Reserved"
+        return "Not reserved"
+
     def __str__(self):
         return self.distribution_code
 
@@ -86,6 +96,11 @@ class DistributionItem(models.Model):
     quantity = models.DecimalField(max_digits=14, decimal_places=2)
     unit = models.CharField(max_length=30)
 
+    def __str__(self):
+        return (
+            f"{self.distribution.distribution_code} · {self.inventory_item.item_name}"
+        )
+
     class Meta:
         constraints = [
             models.CheckConstraint(
@@ -96,4 +111,32 @@ class DistributionItem(models.Model):
                 fields=["distribution", "inventory_item"],
                 name="unique_distribution_stock",
             ),
+        ]
+
+
+class DistributionAllocation(models.Model):
+    distribution_item = models.ForeignKey(
+        DistributionItem, on_delete=models.PROTECT, related_name="allocations"
+    )
+    batch = models.ForeignKey(
+        "inventory.InventoryBatch", on_delete=models.PROTECT, related_name="allocations"
+    )
+    quantity = models.DecimalField(max_digits=14, decimal_places=2)
+    status = models.CharField(
+        max_length=12,
+        default="RESERVED",
+        choices=[
+            ("RESERVED", "Reserved"),
+            ("DELIVERED", "Delivered"),
+            ("RELEASED", "Released"),
+        ],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity__gt=0), name="positive_allocation"
+            )
         ]
