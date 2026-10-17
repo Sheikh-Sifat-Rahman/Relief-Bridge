@@ -2,10 +2,8 @@ from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.urls import reverse
 from django.utils import timezone
 
-from accounts.notifications import notify
 from accounts.permissions import has_role, require_staff
 from audit.services import generate_code, log
 from campaigns.models import DisasterCampaign
@@ -109,8 +107,3 @@ def inspect_goods(actor, item_id, warehouse, accepted, reason=""):
         )
         donation.save()
     log(actor, "Donation inspection", item, reason)
-    notify(
-        donation.donor.user_id,
-        f"{donation.donation_code}: inspection completed for {item.item_name}; {accepted} {item.unit} accepted.",
-        reverse("donor:detail", args=[donation.pk]),
-    )

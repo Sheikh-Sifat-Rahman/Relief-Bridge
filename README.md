@@ -241,3 +241,14 @@ The Notifications link provides private, paginated in-app updates for access dec
 The opening-balance migration preserves existing stock totals as explicitly labelled **Opening balance** batches with no donor linkage. Historic donations and deliveries are retained, but their provenance is not reconstructed. The existing research `traceability_percent` remains a ledger-reconciliation metric, not a donor-provenance percentage.
 
 Stock mutations use atomic transactions and ordered inventory row locks. SQLite remains suitable for local demonstrations; its lack of row-level `SELECT FOR UPDATE` means concurrent production scheduling must be validated against the configured MySQL database. The new tests cover source preservation, expiry selection/revalidation, overbooking, cancellation, partial delivery, failed-operation rollback, replay protection, private timelines/notifications, post-commit notifications and opening-balance migration.
+
+### Notifications for every role
+
+Every signed-in account, including accounts awaiting role approval, can open **My notifications** from the main navigation or dashboard. Role dashboards also include a Notifications shortcut. The inbox supports All/Unread filters, unread badges, pagination and individual/all read controls; queries and read actions are always restricted to the current user.
+
+- Active administrators receive new goods/money donation requests, relief applications and role-access requests, with direct review links. Inspection, volunteer-assignment and delivery activity also produces admin updates.
+- Donors receive submission confirmations, acceptance/rejection reasons, inspection results and batch-linked scheduling, cancellation and delivery updates.
+- Aid seekers receive submission confirmations, review/verification decisions and reasons, household verification changes, delivery plans, scheduling, cancellations and completion updates.
+- Volunteers receive role decisions, profile status/area/warehouse changes, event assignments and reassignments, assignment removal, event date/location changes and delivery activity.
+
+Saved workflow transitions are observed centrally in `accounts/notification_events.py`, covering Review center services and Operations edits. Notifications are queued with `transaction.on_commit`, unchanged saves are ignored, and failed transactions produce no notifications. New activity is covered from installation onward; old decisions are not replayed as new events. Internal workflow code must use model `save()` or explicitly notify when using bulk `QuerySet.update()`, which bypasses Django signals. Inbox data and counts refresh on navigation/reload; email, SMS and browser push are not configured.

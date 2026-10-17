@@ -1,11 +1,19 @@
 {% extends 'base.html' %}
+{% block title %}My notifications{% endblock %}
 {% block content %}
-<p class="eyebrow">Your updates</p><h1>Notifications</h1>
-<form method="post" class="mb-4">{% csrf_token %}<button class="btn btn-outline-success">Mark all as read</button></form>
-{% for entry in page %}<article class="card card-body mb-3">
-<div class="d-flex justify-content-between gap-3"><p>{% if not entry.read_at %}<span class="badge bg-success">New</span> {% endif %}{{ entry.message }}</p><small>{{ entry.created_at }}</small></div>
-<div class="d-flex gap-3 align-items-center">{% if entry.link %}<a href="{{ entry.link }}">View details</a>{% endif %}
+<p class="eyebrow">Stay informed</p>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+<div><h1>My notifications</h1><p class="text-muted">Updates for all your roles, in one private inbox.</p></div>
+{% if unread_count %}<form method="post">{% csrf_token %}<button class="btn btn-outline-success">Mark all as read</button></form>{% endif %}
+</div>
+<nav aria-label="Notification filters" class="d-flex gap-2 mb-4">
+<a class="btn {% if not unread_only %}btn-success{% else %}btn-outline-success{% endif %}" href="{% url 'accounts:notifications' %}" {% if not unread_only %}aria-current="page"{% endif %}>All updates</a>
+<a class="btn {% if unread_only %}btn-success{% else %}btn-outline-success{% endif %}" href="?filter=unread" {% if unread_only %}aria-current="page"{% endif %}>Unread ({{ unread_count }})</a>
+</nav>
+{% for entry in page %}<article class="card card-body mb-3 {% if not entry.read_at %}border-success{% endif %}">
+<div class="d-flex flex-wrap justify-content-between gap-2"><p>{% if not entry.read_at %}<span class="badge bg-success">New</span> {% endif %}{{ entry.message }}</p><time class="text-muted small" datetime="{{ entry.created_at|date:'c' }}">{{ entry.created_at }}</time></div>
+<div class="d-flex flex-wrap gap-3 align-items-center">{% if entry.link %}<a href="{{ entry.link }}">View details</a>{% endif %}
 {% if not entry.read_at %}<form method="post">{% csrf_token %}<input type="hidden" name="notification_id" value="{{ entry.pk }}"><button class="btn btn-sm btn-outline-secondary">Mark as read</button></form>{% endif %}</div></article>
-{% empty %}<p>No updates yet. Approval, inspection and delivery updates will appear here.</p>{% endfor %}
-<nav aria-label="Notifications pages">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Previous</a>{% endif %} Page {{ page.number }} of {{ page.paginator.num_pages }} {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next</a>{% endif %}</nav>
+{% empty %}<div class="card card-body py-5 text-center"><h2 class="h4">{% if unread_only %}You're all caught up{% else %}No notifications yet{% endif %}</h2><p class="text-muted mb-0">{% if user.is_staff %}New donation, relief and access requests, plus delivery activity, will appear here.{% else %}Submission confirmations, approval decisions, volunteer assignments and delivery updates will appear here when they apply to you.{% endif %}</p></div>{% endfor %}
+{% if page.paginator.num_pages > 1 %}<nav aria-label="Notifications pages" class="d-flex gap-3 mt-4">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}{% if unread_only %}&amp;filter=unread{% endif %}">Previous</a>{% endif %}<span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?page={{ page.next_page_number }}{% if unread_only %}&amp;filter=unread{% endif %}">Next</a>{% endif %}</nav>{% endif %}
 {% endblock %}

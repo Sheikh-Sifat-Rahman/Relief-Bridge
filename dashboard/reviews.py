@@ -1,11 +1,9 @@
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import F
-from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import UserRole
-from accounts.notifications import notify
 from accounts.permissions import require_staff
 from accounts.services import approve_role
 from aidseekers.models import AidRequest
@@ -38,11 +36,6 @@ def review_role(actor, pk, decision, reason=""):
         membership.approved_at = None
         membership.save()
         log(actor, "Role rejection", membership, reason)
-    notify(
-        membership.user_id,
-        f"Your {membership.role.name} access request: {membership.status}. {reason}",
-        reverse("accounts:profile"),
-    )
     return membership
 
 
@@ -76,11 +69,6 @@ def review_donation(actor, pk, decision, reason=""):
         donation,
         reason,
     )
-    notify(
-        donation.donor.user_id,
-        f"Donation {donation.donation_code}: {donation.review_status}. {reason}",
-        reverse("donor:detail", args=[donation.pk]),
-    )
     return donation
 
 
@@ -104,10 +92,5 @@ def review_aid(actor, pk, decision, reason=""):
         "Aid request approval" if decision == "APPROVE" else "Aid request rejection",
         aid,
         reason,
-    )
-    notify(
-        aid.seeker.user_id,
-        f"Your relief request: {aid.status}. {reason}",
-        reverse("seeker:detail", args=[aid.pk]),
     )
     return aid

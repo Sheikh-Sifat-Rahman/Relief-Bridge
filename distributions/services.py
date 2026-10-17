@@ -3,7 +3,7 @@ from django.db import transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.notifications import notify
+from accounts.notifications import notify, notify_staff
 from accounts.permissions import has_role, require_staff
 from aidseekers.models import AidSeekerProfile
 from audit.services import log
@@ -129,11 +129,6 @@ def confirm_distribution(actor, distribution_id, override_reason=""):
     distribution.aid_request.status = "COMPLETED"
     distribution.aid_request.save()
     log(actor, "Distribution completion", distribution)
-    notify(
-        distribution.beneficiary.user_id,
-        f"Delivery {distribution.distribution_code} has been completed.",
-        reverse("seeker:home"),
-    )
     _notify_donors(distribution, "delivered")
     return distribution
 
@@ -233,6 +228,10 @@ def reserve_distribution(actor, distribution_id):
         raise ValidationError("This delivery already has a stock reservation.")
     _reserve(distribution)
     log(actor, "Stock reserved", distribution)
+    notify_staff(
+        f"Delivery {distribution.distribution_code} scheduled; stock reserved.",
+        reverse("admin:distributions_distribution_change", args=[distribution.pk]),
+    )
     notify(
         distribution.volunteer.user_id,
         f"Delivery {distribution.distribution_code} is scheduled; stock is reserved.",
@@ -270,15 +269,5 @@ def cancel_distribution(actor, distribution_id):
     distribution.status = "CANCELLED"
     distribution.save(update_fields=["status"])
     log(actor, "Distribution cancelled; stock released", distribution)
-    notify(
-        distribution.volunteer.user_id,
-        f"Delivery {distribution.distribution_code} was cancelled.",
-        reverse("volunteer:home"),
-    )
-    notify(
-        distribution.beneficiary.user_id,
-        f"Delivery {distribution.distribution_code} was cancelled. Your relief request remains on record.",
-        reverse("seeker:home"),
-    )
     _notify_donors(distribution, "cancelled; reservation released")
     return distribution

@@ -92,6 +92,8 @@ def notifications(request):
     from .models import Notification
 
     entries = Notification.objects.filter(recipient=request.user)
+    unread_count = entries.filter(read_at__isnull=True).count()
+    unread_only = request.GET.get("filter") == "unread"
     if request.method == "POST":
         if request.POST.get("notification_id"):
             from django.http import HttpResponseBadRequest
@@ -108,8 +110,14 @@ def notifications(request):
         return redirect("accounts:notifications")
     from django.core.paginator import Paginator
 
+    if unread_only:
+        entries = entries.filter(read_at__isnull=True)
     return render(
         request,
         "accounts/notifications.html",
-        {"page": Paginator(entries, 25).get_page(request.GET.get("page"))},
+        {
+            "page": Paginator(entries, 25).get_page(request.GET.get("page")),
+            "unread_only": unread_only,
+            "unread_count": unread_count,
+        },
     )
